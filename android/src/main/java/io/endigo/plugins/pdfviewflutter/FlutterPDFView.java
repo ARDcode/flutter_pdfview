@@ -23,7 +23,6 @@ public class FlutterPDFView implements PlatformView, MethodCallHandler {
     @SuppressWarnings("unchecked")
     FlutterPDFView(Context context, BinaryMessenger messenger, int id, Map<String, Object> params) {
         pdfView = new PDFView(context, null);
-
         methodChannel = new MethodChannel(messenger, "plugins.endigo.io/pdfview_" + id);
         methodChannel.setMethodCallHandler(this);
 
@@ -33,6 +32,7 @@ public class FlutterPDFView implements PlatformView, MethodCallHandler {
             File file = new File(filePath);
 
             Constants.PRELOAD_OFFSET = 3;
+            Constants.THUMBNAIL_RATIO = 1f;
 
             pdfView.fromFile(file)
                 .enableSwipe(getBoolean(params, "enableSwipe"))
