@@ -1,6 +1,8 @@
 package io.endigo.plugins.pdfviewflutter;
 
 import android.content.Context;
+import android.graphics.Canvas;
+import android.util.Log;
 import android.view.View;
 import io.flutter.plugin.common.BinaryMessenger;
 import io.flutter.plugin.common.MethodCall;
@@ -15,6 +17,7 @@ import java.util.Map;
 import com.github.barteksc.pdfviewer.PDFView;
 import com.github.barteksc.pdfviewer.listener.*;
 import com.github.barteksc.pdfviewer.util.Constants;
+import com.shockwave.pdfium.util.SizeF;
 
 public class FlutterPDFView implements PlatformView, MethodCallHandler {
     private final PDFView pdfView;
@@ -25,7 +28,6 @@ public class FlutterPDFView implements PlatformView, MethodCallHandler {
         pdfView = new PDFView(context, null);
         methodChannel = new MethodChannel(messenger, "plugins.endigo.io/pdfview_" + id);
         methodChannel.setMethodCallHandler(this);
-
         if (params.containsKey("filePath")) {
             String filePath = (String) params.get("filePath");
 
@@ -68,16 +70,30 @@ public class FlutterPDFView implements PlatformView, MethodCallHandler {
                         methodChannel.invokeMethod("onPageError", args);
                     }
                 })
-                .onRender(new OnRenderListener() {
-                    @Override
-                    public void onInitiallyRendered(int pages) {
-                        Map<String, Object> args = new HashMap<>();
-                        args.put("pages", pages);
-                        methodChannel.invokeMethod("onRender", args);
-                    }
-                })
+//                .onRender(new OnRenderListener() {
+//                    @Override
+//                    public void onInitiallyRendered(int pages) {
+//                        Map<String, Object> args = new HashMap<>();
+//                        args.put("pages", pages);
+//                        methodChannel.invokeMethod("onRender", args);
+//                    }
+//                })
                 .enableDoubletap(true)
                 .defaultPage(0)
+                    .onDraw(new OnDrawListener() {
+                        @Override
+                        public void onLayerDrawn(Canvas canvas, float pageWidth, float pageHeight, int displayedPage) {
+                            Map<String, Object> args = new HashMap<>();
+                            args.put("pageWidth", pageWidth);
+                            args.put("pageHeight", pageHeight);
+                            args.put("getCurrentXOffset", pdfView.getCurrentXOffset());
+                            args.put("getCurrentYOffset", pdfView.getCurrentYOffset());
+                            args.put("zoom", pdfView.getZoom());
+                            Log.d("OnDraw", pageWidth + " /// " + pageHeight);
+                            Log.d("OnDraw2", "Height: " + pdfView.getPageSize(0).getHeight() + " offsetX: " + pdfView.getCurrentXOffset() + " offsetY: " + pdfView.getCurrentYOffset());
+                            methodChannel.invokeMethod("onDraw", args);
+                        }
+                    })
                 .load();
         }
     }
@@ -96,6 +112,12 @@ public class FlutterPDFView implements PlatformView, MethodCallHandler {
             case "currentPage":
                 getCurrentPage(result);
                 break;
+            case "zoom":
+                getZoom(result);
+                break;
+            case "pageSize":
+                getPageSize(result);
+                break;
             case "setPage":
                 setPage(methodCall, result);
             case "updateSettings":
@@ -111,6 +133,20 @@ public class FlutterPDFView implements PlatformView, MethodCallHandler {
 
     void getCurrentPage(Result result) {
         result.success(pdfView.getCurrentPage());
+    }
+
+    void getZoom(Result result) {
+        Log.d("ZOOM", String.valueOf(pdfView.getZoom()));
+        result.success(pdfView.getZoom());
+    }
+
+    void getPageSize(Result result) {
+        Map<String, Float> sizes = new HashMap<String, Float>();
+        SizeF sizeF = pdfView.getPageSize(0);
+        Log.d("KEK", String.valueOf(sizeF.getHeight()));
+        sizes.put("height", sizeF.getHeight());
+        sizes.put("width", sizeF.getWidth());
+        result.success(sizes);
     }
 
     void setPage(MethodCall call, Result result) {

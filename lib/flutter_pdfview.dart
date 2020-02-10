@@ -10,6 +10,8 @@ typedef void RenderCallback(int pages);
 typedef void PageChangedCallback(int page, int total);
 typedef void ErrorCallback(dynamic error);
 typedef void PageErrorCallback(int page, dynamic error);
+typedef void DrawCallback(double pageWidth, double pageHeight,
+    double getCurrentXOffset, double getCurrentYOffset, double zoom);
 
 class PDFView extends StatefulWidget {
   const PDFView({
@@ -20,6 +22,7 @@ class PDFView extends StatefulWidget {
     this.onPageChanged,
     this.onError,
     this.onPageError,
+    this.onDraw,
     this.gestureRecognizers,
     this.enableSwipe = true,
     this.swipeHorizontal = false,
@@ -37,6 +40,7 @@ class PDFView extends StatefulWidget {
   final PDFViewCreatedCallback onViewCreated;
   final RenderCallback onRender;
   final PageChangedCallback onPageChanged;
+  final DrawCallback onDraw;
   final ErrorCallback onError;
   final PageErrorCallback onPageError;
 
@@ -216,6 +220,18 @@ class PDFViewController {
         }
 
         return null;
+
+      case 'onDraw':
+        if (_widget.onRender != null) {
+          _widget.onDraw(
+              call.arguments['pageWidth'],
+              call.arguments['pageHeight'],
+              call.arguments['getCurrentXOffset'],
+              call.arguments['getCurrentYOffset'],
+              call.arguments['zoom']);
+        }
+
+        return null;
       case 'onPageChanged':
         if (_widget.onPageChanged != null) {
           _widget.onPageChanged(
@@ -243,6 +259,17 @@ class PDFViewController {
   Future<int> getPageCount() async {
     final int pageCount = await _channel.invokeMethod('pageCount');
     return pageCount;
+  }
+
+  Future<double> getZoom() async {
+    final double zoom = await _channel.invokeMethod('zoom');
+    return zoom;
+  }
+
+  Future<Map> getPageSize() async {
+    final Map pageSize = await _channel.invokeMethod('pageSize');
+    print('pageSize' + pageSize.toString());
+    return pageSize;
   }
 
   Future<int> getCurrentPage() async {
